@@ -10,7 +10,7 @@ import {
   useFormAction,
   useNavigation,
 } from "@remix-run/react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Confetti from "react-confetti";
 import { useDropzone } from "react-dropzone-esm";
 import { useWindowSize } from "react-use";
@@ -22,6 +22,7 @@ import {
   uploadHandler,
 } from "./parse.server";
 import { getFirstOrder, getTotalSpend } from "./sum";
+import toast, { Toaster } from "react-hot-toast";
 
 export const meta: MetaFunction = () => {
   return [
@@ -51,6 +52,7 @@ export async function action({ request }: ActionFunctionArgs) {
 export default function Index() {
   const input = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [fileName, setFileName] = useState("");
 
   const data = useActionData<typeof action>();
   const formAction = useFormAction();
@@ -64,6 +66,10 @@ export default function Index() {
         for (const file of acceptedFiles) {
           dT.items.add(file);
         }
+
+        const file = acceptedFiles.at(0);
+
+        setFileName(file!.name);
 
         input.current!.files = dT.files;
       }
@@ -87,17 +93,28 @@ export default function Index() {
     navigation.formAction === formAction &&
     navigation.formMethod === "POST";
 
+  function showErrorToast() {
+    toast(
+      "Oops! Seems like there was an error, try re-downloading your Uber Eats data and try again.",
+      { duration: 5000 }
+    );
+  }
+
+  useEffect(() => {
+    if (data?.orderTotal === 0) {
+      showErrorToast();
+    }
+  }, [data?.orderTotal]);
+
   const parsedOrderTimeDate = new Date(Date.parse(data?.firstOrder!));
   return (
     <>
       <div className="absolute right-10 top-4">
         <dialog
           ref={dialogRef}
-          className="rounded-md pt-10 px-10 pb-5 border border-gray-200 shadow-lg relative"
+          className="rounded-md pt-10 px-10 pb-5 border border-gray-200 shadow-lg relative max-w-[60ch]"
         >
-          <h2 className="text-xl font-bold mb-2 text-center">
-            How to get your Uber data
-          </h2>
+          <h2 className="text-xl font-bold mb-2">How to get your Uber data</h2>
           <ol className="list-decimal list-inside mb-4">
             <li>Open the Uber app</li>
             <li>Go to Account &gt; Settings &gt; Privacy &gt; See summary</li>
@@ -106,8 +123,12 @@ export default function Index() {
             </li>
             <li>Tap on 'Uber&apos;s data download feature'</li>
             <li>Scroll down and tap on Download Data</li>
+            <li>
+              Once you have your data, un-zip the contents and upload the
+              'eats_order_details.csv' inside of the 'Eats' folder
+            </li>
           </ol>
-          <p className="text-sm text-gray-500 [text-wrap:balance] text-center">
+          <p className="text-sm text-gray-500">
             note: the data is not available right away, it will take about 24 -
             48h for Uber to e-mail you your data
           </p>
@@ -124,9 +145,9 @@ export default function Index() {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
@@ -145,9 +166,9 @@ export default function Index() {
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             className="w-5 h-5"
           >
             <circle cx="12" cy="12" r="10" />
@@ -157,6 +178,7 @@ export default function Index() {
         </button>
       </div>
       <div className="h-full flex justify-center flex-col items-center px-2">
+        <Toaster toastOptions={{ className: "bg-red-100" }} />
         <ClientOnly>
           {() => (
             <Confetti
@@ -181,10 +203,8 @@ export default function Index() {
           </label>
           <div
             {...getRootProps({
-              className: `flex flex-col items-center p-[20px] border-2 border-dashed border-gray-300 rounded-md py-20 bg-gray-50 focus-visible:outline focus-visible:outline-4 focus-visible:outline-green-600 focus-visible:outline-offset-4 ${
-                isDragActive
-                  ? "bg-blue-50 motion-safe:animate-pulse duration-150"
-                  : null
+              className: `flex flex-col items-center p-[20px] border-2 border-dashed border-gray-300 rounded-md py-20 bg-gray-50 focus-visible:outline focus-visible:outline-4 focus-visible:outline-green-600  duration-150 cursor-pointer focus-visible:outline-offset-4 hover:bg-blue-50 ${
+                isDragActive ? "bg-blue-50 motion-safe:animate-pulse" : null
               }`,
             })}
           >
@@ -201,6 +221,11 @@ export default function Index() {
               Drag and drop the .csv file here or click here to select the file
             </span>
           </div>
+          {fileName ? (
+            <p className="bg-blue-50 text-center py-4 rounded-md border-2 border-blue-200 text-sm text-blue-900 font-bold">
+              {fileName}
+            </p>
+          ) : null}
           <button
             disabled={!hasSelectedFile || isSubmitting}
             className="bg-green-500 text-white font-bold w-full py-3 rounded-md hover:bg-green-400 duration-150 disabled:bg-green-300 disabled:cursor-not-allowed"
@@ -211,7 +236,7 @@ export default function Index() {
         {data?.orderTotal ? (
           <p className="text-xl">
             You've spent{" "}
-            <span className="text-2xl font-bold">
+            <span className="text-2xl font-bold text-indigo-500">
               {new Intl.NumberFormat("en-CA", {
                 style: "currency",
                 currencyDisplay: "code",
@@ -221,7 +246,7 @@ export default function Index() {
             on Uber Eats since since{" "}
             <time
               dateTime={parsedOrderTimeDate.toISOString()}
-              className="font-bold text-xl"
+              className="font-bold text-xl text-indigo-500"
             >
               {" "}
               {new Intl.DateTimeFormat("en-CA", {

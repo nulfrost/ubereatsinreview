@@ -21,6 +21,7 @@
     "react-confetti": "^6.1.0",
     "react-dom": "^18.2.0",
     "react-dropzone-esm": "^15.0.1",
+    "react-hot-toast": "^2.4.1",
     "react-use": "^17.4.2",
     "remix-utils": "^7.3.0"
   },
