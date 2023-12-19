@@ -4,7 +4,12 @@ import {
   unstable_parseMultipartFormData,
   json,
 } from "@remix-run/node";
-import { Form, useActionData } from "@remix-run/react";
+import {
+  Form,
+  useActionData,
+  useFormAction,
+  useNavigation,
+} from "@remix-run/react";
 import {
   convertCsvToJson,
   isUploadedFile,
@@ -12,6 +17,7 @@ import {
   removeTempFile,
 } from "./parse.server";
 import { getFirstOrder, getTotalSpend } from "./sum";
+import { useDropzone } from "react-dropzone-esm";
 
 export const meta: MetaFunction = () => {
   return [
@@ -36,6 +42,22 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function Index() {
   const data = useActionData<typeof action>();
+  const formAction = useFormAction();
+  const navigation = useNavigation();
+  const { getInputProps, getRootProps, acceptedFiles } = useDropzone({
+    maxSize: 5_000_000,
+    accept: {
+      "text/csv": [".csv"],
+    },
+  });
+
+  const hasSelectedFile = acceptedFiles.length > 0;
+
+  const isSubmitting =
+    navigation.state === "submitting" &&
+    navigation.formAction === formAction &&
+    navigation.formMethod === "POST";
+
   const parsedOrderTimeDate = new Date(Date.parse(data?.firstOrder!));
   return (
     <div className="h-full flex justify-center flex-col items-center">
@@ -48,22 +70,31 @@ export default function Index() {
         className="space-y-4 mb-4"
       >
         <label htmlFor="uber" className="block sr-only">
-          Import your Uber data
+          Import your Uber Eats data
         </label>
-        <input
-          type="file"
-          name="uber"
-          id="uber"
-          className="block"
-          accept=".csv"
-          required
-          aria-required="true"
-        />
+        <div
+          {...getRootProps({
+            className:
+              "flex flex-col items-center p-[20px] border border-dashed border-gray-300 rounded-md",
+          })}
+        >
+          <input
+            {...getInputProps({
+              name: "uber",
+              id: "uber",
+              "aria-describedby": "file-desc",
+            })}
+          />
+          <span className="text-sm text-gray-500" id="file-desc">
+            Drag and drop the .csv file here or click to select file
+          </span>
+        </div>
         <button
           type="submit"
-          className="bg-green-500 text-white font-bold w-full py-3 rounded-md hover:bg-green-400 duration-150"
+          disabled={!hasSelectedFile || isSubmitting}
+          className="bg-green-500 text-white font-bold w-full py-3 rounded-md hover:bg-green-400 duration-150 disabled:bg-green-300 disabled:cursor-not-allowed"
         >
-          Face your sins
+          See how bad it really is &rarr;
         </button>
       </Form>
       {data?.orderTotal ? (
@@ -76,11 +107,17 @@ export default function Index() {
               currency: "CAD",
             }).format(data?.orderTotal)}
           </span>{" "}
-          on Uber Eats since your first order on{" "}
-          {new Intl.DateTimeFormat("en-CA", {
-            dateStyle: "full",
-            timeStyle: "medium",
-          }).format(parsedOrderTimeDate)}
+          on Uber Eats since since{" "}
+          <time
+            dateTime={parsedOrderTimeDate.toISOString()}
+            className="font-bold text-xl"
+          >
+            {" "}
+            {new Intl.DateTimeFormat("en-CA", {
+              dateStyle: "full",
+              timeStyle: "medium",
+            }).format(parsedOrderTimeDate)}
+          </time>
         </p>
       ) : null}
     </div>
