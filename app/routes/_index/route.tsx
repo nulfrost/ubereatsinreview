@@ -18,6 +18,7 @@ import {
 } from "./parse.server";
 import { getFirstOrder, getTotalSpend } from "./sum";
 import { useDropzone } from "react-dropzone-esm";
+import { useCallback, useRef } from "react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -41,11 +42,29 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Index() {
+  const input = useRef<HTMLInputElement>(null);
+
   const data = useActionData<typeof action>();
   const formAction = useFormAction();
   const navigation = useNavigation();
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (typeof input.current !== null) {
+        const dT = new DataTransfer();
+        for (const file of acceptedFiles) {
+          dT.items.add(file);
+        }
+
+        input.current!.files = dT.files;
+      }
+    },
+    [input.current]
+  );
+
   const { getInputProps, getRootProps, acceptedFiles } = useDropzone({
-    maxSize: 5_000_000,
+    onDrop,
+    maxSize: 100_000,
     accept: {
       "text/csv": [".csv"],
     },
@@ -75,26 +94,26 @@ export default function Index() {
         <div
           {...getRootProps({
             className:
-              "flex flex-col items-center p-[20px] border border-dashed border-gray-300 rounded-md",
+              "flex flex-col items-center p-[20px] border border-dashed border-gray-300 rounded-md py-20",
           })}
         >
           <input
-            {...getInputProps({
-              name: "uber",
-              id: "uber",
-              "aria-describedby": "file-desc",
-            })}
+            {...getInputProps()}
+            id="uber"
+            name="uber"
+            type="file"
+            ref={input}
           />
           <span className="text-sm text-gray-500" id="file-desc">
-            Drag and drop the .csv file here or click to select file
+            Drag and drop the .csv file here or click here to select the file
           </span>
         </div>
+        {/* <input type="file" name="uber" id="uber" /> */}
         <button
-          type="submit"
           disabled={!hasSelectedFile || isSubmitting}
           className="bg-green-500 text-white font-bold w-full py-3 rounded-md hover:bg-green-400 duration-150 disabled:bg-green-300 disabled:cursor-not-allowed"
         >
-          See how bad it really is &rarr;
+          Find out how bad it really is &rarr;
         </button>
       </Form>
       {data?.orderTotal ? (
