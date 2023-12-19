@@ -19,6 +19,9 @@ import {
 import { getFirstOrder, getTotalSpend } from "./sum";
 import { useDropzone } from "react-dropzone-esm";
 import { useCallback, useRef } from "react";
+import { useWindowSize } from "react-use";
+import Confetti from "react-confetti";
+import { ClientOnly } from "remix-utils/client-only";
 
 export const meta: MetaFunction = () => {
   return [
@@ -47,6 +50,7 @@ export default function Index() {
   const data = useActionData<typeof action>();
   const formAction = useFormAction();
   const navigation = useNavigation();
+  const { width, height } = useWindowSize();
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -80,6 +84,17 @@ export default function Index() {
   const parsedOrderTimeDate = new Date(Date.parse(data?.firstOrder!));
   return (
     <div className="h-full flex justify-center flex-col items-center">
+      <ClientOnly>
+        {() => (
+          <Confetti
+            width={width}
+            height={height}
+            recycle={false}
+            numberOfPieces={3000}
+            run={data?.orderTotal ? true : false}
+          />
+        )}
+      </ClientOnly>
       <h1 className="font-bold text-3xl max-w-[20ch] text-center">
         See how much you've spent on Uber Eats so far
       </h1>
